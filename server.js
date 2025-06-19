@@ -6,6 +6,11 @@ import { fileURLToPath } from 'url';
 
 const app = express();
 const ICS_URLS = (process.env.ICS_URLS || '').split(',').map(u => u.trim());
+if (!ICS_URLS.length) {
+  console.error('Error: No ICS URLs provided. Set the ICS_URLS environment variable.');
+  process.exit(1);
+}
+
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function generateColor(index, total = 12, lightness = 70, saturation = 70, alpha = 0.4) {
@@ -77,7 +82,7 @@ app.get('/events', async (_req, res) => {
     res.json({ events: cachedEvents, feeds: feedMeta });
   } catch (err) {
     console.error('Unexpected error in /events:', err);
-    res.status(500).json({ error: 'Server error fetching calendar data.' });
+    res.status(500).json({ error: `Server error fetching calendar data: ${err.message}` });
   }
 });
 
