@@ -19,7 +19,6 @@ app.use((req, res, next) => {
 
 // The BASE_PATH is only used for frontend URLs, not for route definitions
 const BASE_PATH = process.env.BASE_PATH || '/fc';
-console.log('BASE_PATH environment variable:', process.env.BASE_PATH);
 console.log('Using BASE_PATH:', BASE_PATH);
 
 const ICS_URLS = (process.env.ICS_URLS || '').split(',').map(u => u.trim()).filter(Boolean);
@@ -36,8 +35,14 @@ function generateColor(index, total = 12, lightness = 70, saturation = 70, alpha
   return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
 }
 
-// Serve static files from 'public' directory
+// Serve static files from 'public' directory at the root path
 app.use(express.static(path.join(__dirname, 'public')));
+
+// IMPORTANT: Also serve static files at the BASE_PATH
+// This ensures files are available at both /fullcalendar/main.min.js and /fc/fullcalendar/main.min.js
+if (BASE_PATH && BASE_PATH !== '/') {
+  app.use(BASE_PATH, express.static(path.join(__dirname, 'public')));
+}
 
 // Global cache
 let cachedEvents = [];
