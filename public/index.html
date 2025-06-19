@@ -21,7 +21,7 @@
   document.addEventListener('DOMContentLoaded', async function () {
     const loading = document.getElementById('loading');
     try {
-      const res = await fetch('/events');
+      const res = await fetch('/fc/events');
       const { events, feeds } = await res.json();
       loading.style.display = 'none';
 
