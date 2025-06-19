@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <title><%= title %></title>
+  <link rel="stylesheet" href="<%= BASE_PATH %>/fullcalendar/index.global.css" />
+  <script src="<%= BASE_PATH %>/fullcalendar/index.global.js"></script>
   <style>
     body { font-family: sans-serif; padding: 1em; }
     #debug { background: #f0f0f0; padding: 10px; border: 1px solid #ccc; margin-bottom: 20px; }
@@ -20,8 +22,7 @@
     
     <h3>Resource URLs</h3>
     <ul>
-      <li>CSS: <code><%= BASE_PATH %>/fullcalendar/main.css</code></li>
-      <li>JS: <code><%= BASE_PATH %>/fullcalendar/main.js</code></li>
+      <li>JS: <code><%= BASE_PATH %>/fullcalendar/index.global.js</code></li>
       <li>Events: <code><%= BASE_PATH %>/events</code></li>
     </ul>
     
@@ -55,58 +56,32 @@
     // Clear initial message
     resourceStatus.textContent = '';
     
-    // Test CSS loading - UPDATED FILE PATH
-    const cssUrl = '<%= BASE_PATH %>/fullcalendar/main.css';
-    const cssLink = document.createElement('link');
-    cssLink.rel = 'stylesheet';
-    cssLink.href = cssUrl;
-    cssLink.onload = () => addStatus(resourceStatus, `✅ CSS loaded successfully: ${cssUrl}`);
-    cssLink.onerror = () => addStatus(resourceStatus, `❌ Failed to load CSS: ${cssUrl}`, true);
-    document.head.appendChild(cssLink);
+    // Check if FullCalendar is defined
+    if (typeof FullCalendar !== 'undefined') {
+      addStatus(resourceStatus, '✅ FullCalendar object is available');
+      loadEvents();
+    } else {
+      addStatus(resourceStatus, '❌ FullCalendar object is NOT available', true);
+    }
     
-    // Test JS loading - UPDATED FILE PATH
-    const jsUrl = '<%= BASE_PATH %>/fullcalendar/main.js';
-    const script = document.createElement('script');
-    script.src = jsUrl;
-    script.onload = () => {
-      addStatus(resourceStatus, `✅ JS loaded successfully: ${jsUrl}`);
+    function loadEvents() {
+      // Test events API
+      const eventsUrl = '<%= BASE_PATH %>/events';
+      fetchStatus.textContent = '';
+      addStatus(fetchStatus, `Fetching events from: ${eventsUrl}`);
       
-      // Check if FullCalendar is defined
-      if (typeof FullCalendar !== 'undefined') {
-        addStatus(resourceStatus, '✅ FullCalendar object is available');
-      } else {
-        addStatus(resourceStatus, '❌ FullCalendar object is NOT available', true);
-      }
-    };
-    script.onerror = () => addStatus(resourceStatus, `❌ Failed to load JS: ${jsUrl}`, true);
-    document.head.appendChild(script);
-    
-    // Test events API
-    const eventsUrl = '<%= BASE_PATH %>/events';
-    fetchStatus.textContent = '';
-    addStatus(fetchStatus, `Fetching events from: ${eventsUrl}`);
-    
-    fetch(eventsUrl)
-      .then(response => {
-        if (!response.ok) {
-          addStatus(fetchStatus, `❌ Events API returned status: ${response.status}`, true);
-          return Promise.reject(`HTTP error! status: ${response.status}`);
-        }
-        
-        addStatus(fetchStatus, `✅ Events API response received with status: ${response.status}`);
-        return response.text();
-      })
-      .then(text => {
-        addStatus(fetchStatus, `✅ Received ${text.length} bytes of data`);
-        
-        // Show a sample of the response
-        const pre = document.createElement('pre');
-        pre.textContent = text.length > 500 ? text.substring(0, 500) + '...' : text;
-        fetchStatus.appendChild(pre);
-        
-        try {
-          const data = JSON.parse(text);
-          addStatus(fetchStatus, `✅ Successfully parsed JSON data`);
+      fetch(eventsUrl)
+        .then(response => {
+          if (!response.ok) {
+            addStatus(fetchStatus, `❌ Events API returned status: ${response.status}`, true);
+            return Promise.reject(`HTTP error! status: ${response.status}`);
+          }
+          
+          addStatus(fetchStatus, `✅ Events API response received with status: ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          addStatus(fetchStatus, `✅ Received data with ${data.events ? data.events.length : 0} events`);
           
           if (data.events && Array.isArray(data.events)) {
             addStatus(fetchStatus, `✅ Found ${data.events.length} events`);
@@ -114,21 +89,18 @@
             addStatus(fetchStatus, `❌ No events array found in response`, true);
           }
           
-          // Only initialize calendar if FullCalendar is available
-          if (typeof FullCalendar !== 'undefined' && data.events) {
+          // Initialize calendar
+          if (data.events) {
             initializeCalendar(data.events, data.feeds);
           } else {
-            loading.textContent = 'Cannot initialize calendar: FullCalendar not loaded or no events data';
+            loading.textContent = 'Cannot initialize calendar: No events data';
           }
-        } catch (e) {
-          addStatus(fetchStatus, `❌ Failed to parse JSON: ${e.message}`, true);
-          loading.textContent = 'Failed to load calendar: JSON parse error';
-        }
-      })
-      .catch(error => {
-        addStatus(fetchStatus, `❌ Error fetching events: ${error}`, true);
-        loading.textContent = 'Failed to load calendar: Network error';
-      });
+        })
+        .catch(error => {
+          addStatus(fetchStatus, `❌ Error fetching events: ${error}`, true);
+          loading.textContent = 'Failed to load calendar: Network error';
+        });
+    }
     
     function initializeCalendar(events, feeds) {
       try {

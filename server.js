@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import ical from 'node-ical';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,8 +31,8 @@ app.use((req, res, next) => {
 });
 
 // IMPORTANT: Correctly serve FullCalendar files
-// The path was incorrect in the previous version
-app.use(`${BASE_PATH}/fullcalendar`, express.static(path.join(__dirname, 'node_modules', 'fullcalendar', 'dist')));
+// The path is directly in the fullcalendar directory (not in a dist subdirectory)
+app.use(`${BASE_PATH}/fullcalendar`, express.static(path.join(__dirname, 'node_modules', 'fullcalendar')));
 
 // Handle both root path and BASE_PATH
 app.get(['/', BASE_PATH, `${BASE_PATH}/`], (req, res) => {
