@@ -199,6 +199,21 @@
 function initializeCalendar(events) {
   try {
     addStatus(fetchStatus, '✅ Initializing calendar...');
+    
+    // Group events by source
+    const eventSources = {};
+    events.forEach(event => {
+      const source = event.source;
+      if (!eventSources[source]) {
+        eventSources[source] = {
+          id: source,
+          events: [],
+          color: allFeeds[source]?.color || '#888'
+        };
+      }
+      eventSources[source].events.push(event);
+    });
+    
     calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
       initialView: 'listWeek',
       headerToolbar: {
@@ -206,24 +221,49 @@ function initializeCalendar(events) {
         center: 'title',
         right: 'dayGridMonth,timeGridWeek,listWeek'
       },
-      events: events,
-      eventDidMount: function (info) {
-        const source = info.event.extendedProps.source;
-        
-        // Set the color
-        const color = allFeeds[source]?.color || '#888';
-        info.el.style.backgroundColor = color;
-        info.el.style.borderColor = color;
-        
-        console.log('[eventDidMount] Styled event:', info.event.id, 'source:', source);
-      }
+      eventSources: Object.values(eventSources)
     });
+    
     calendar.render();
     loading.style.display = 'none';
     addStatus(fetchStatus, '✅ Calendar rendered successfully');
   } catch (e) {
     addStatus(fetchStatus, `❌ Error initializing calendar: ${e.message}`, true);
     loading.textContent = `Failed to initialize calendar: ${e.message}`;
+  }
+}
+
+function toggleFeed(feedId, isActive) {
+  console.log('[toggleFeed] feedId:', feedId, 'isActive:', isActive);
+  
+  if (isActive) {
+    activeFeeds[feedId] = allFeeds[feedId];
+  } else {
+    delete activeFeeds[feedId];
+  }
+  
+  // Update "toggle all" checkbox state
+  const allChecked = Object.keys(activeFeeds).length === Object.keys(allFeeds).length;
+  const noneChecked = Object.keys(activeFeeds).length === 0;
+  document.getElementById('toggle-all').checked = allChecked;
+  document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
+  
+  console.log('[toggleFeed] activeFeeds:', Object.keys(activeFeeds));
+  
+  // Use FullCalendar's event source visibility
+  const eventSource = calendar.getEventSourceById(feedId);
+  if (eventSource) {
+    if (isActive) {
+      eventSource.refetch(); // Show the source
+    } else {
+      eventSource.remove(); // Hide the source
+      // Re-add it as hidden so we can show it again later
+      calendar.addEventSource({
+        id: feedId,
+        events: [],
+        color: allFeeds[feedId]?.color || '#888'
+      });
+    }
   }
 }
  
@@ -300,49 +340,22 @@ function initializeCalendar(events) {
     }
 
 
- function updateEventVisibility() {
+    function updateEventVisibility() {
   console.log('[updateEventVisibility] Updating visibility for activeFeeds:', Object.keys(activeFeeds));
   
-  // Get only the currently visible event elements
-  const eventElements = document.querySelectorAll('.fc-event');
+  // Get all events from the calendar
+  const allEvents = calendar.getEvents();
   
-  eventElements.forEach(eventEl => {
-    // Try different ways to get the event data from the DOM element
-    let eventData = null;
+  allEvents.forEach(event => {
+    const source = event.extendedProps.source;
+    const shouldShow = !!activeFeeds[source];
     
-    // Method 1: Check if there's a data attribute
-    if (eventEl.dataset && eventEl.dataset.eventId) {
-      const eventId = eventEl.dataset.eventId;
-      eventData = calendar.getEventById(eventId);
-    }
+    // Use FullCalendar's built-in display property
+    event.setProp('display', shouldShow ? 'auto' : 'none');
     
-    // Method 2: Look for FullCalendar's internal event reference
-    if (!eventData && eventEl.fcSeg) {
-      eventData = eventEl.fcSeg.event;
-    }
-    
-    // Method 3: Check classList for source information
-    if (!eventData) {
-      const classList = Array.from(eventEl.classList);
-      const sourceClass = classList.find(cls => cls.startsWith('fc-event-source-'));
-      if (sourceClass) {
-        const source = sourceClass.replace('fc-event-source-', '');
-        const shouldShow = !!activeFeeds[source];
-        eventEl.style.display = shouldShow ? '' : 'none';
-        return;
-      }
-    }
-    
-    // If we found event data, use the source from extendedProps
-    if (eventData && eventData.extendedProps && eventData.extendedProps.source) {
-      const source = eventData.extendedProps.source;
-      const shouldShow = !!activeFeeds[source];
-      eventEl.style.display = shouldShow ? '' : 'none';
-      console.log('[updateEventVisibility]', shouldShow ? 'Showing' : 'Hiding', 'event from source:', source);
-    }
+    console.log('[updateEventVisibility]', shouldShow ? 'Showing' : 'Hiding', 'event:', event.id, 'from source:', source);
   });
 }
- 
 
     
     function refreshCalendar() {
