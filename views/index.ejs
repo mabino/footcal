@@ -292,10 +292,9 @@
       const noneChecked = Object.keys(activeFeeds).length === 0;
       document.getElementById('toggle-all').checked = allChecked;
       document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
-      // For FullCalendar v6, force a re-render by calling render() inside batchRendering
-      calendar.batchRendering(() => {
-        calendar.render();
-      });
+      // Force a re-render of the current view
+      const currentView = calendar.view.type;
+      calendar.changeView(currentView, calendar.getDate());
     }
 
     function filterCalendarEventsDOM() {
