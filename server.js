@@ -4,12 +4,6 @@ import ical from 'node-ical';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Add this near the top of your server.js file
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url} (BASE_PATH=${BASE_PATH})`);
-  next();
-});
-
 
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,8 +18,20 @@ app.use((req, res, next) => {
   next();
 });
 
+
+
 // The BASE_PATH is only used for frontend URLs, not for route definitions
 const BASE_PATH = process.env.BASE_PATH || '/fc';
+
+
+// Add this near the top of your server.js file
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} (BASE_PATH=${BASE_PATH})`);
+  next();
+});
+
+
+
 console.log('Using BASE_PATH:', BASE_PATH);
 
 const ICS_URLS = (process.env.ICS_URLS || '').split(',').map(u => u.trim()).filter(Boolean);
