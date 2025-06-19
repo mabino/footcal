@@ -3,9 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <title><%= title %></title>
-  <!-- Use absolute URLs with the domain name -->
-  <link href="https://bino.io<%= BASE_PATH %>/fullcalendar/main.min.css" rel="stylesheet" />
-  <script src="https://bino.io<%= BASE_PATH %>/fullcalendar/main.min.js"></script>
+  <script>
+    // Debug logging to see what paths are being used
+    console.log('BASE_PATH from server:', '<%= BASE_PATH %>');
+    const cssUrl = '<%= BASE_PATH %>/fullcalendar/main.min.css';
+    const jsUrl = '<%= BASE_PATH %>/fullcalendar/main.min.js';
+    console.log('CSS URL:', cssUrl);
+    console.log('JS URL:', jsUrl);
+  </script>
+  <!-- Make sure to use the BASE_PATH variable correctly -->
+  <link href="<%= BASE_PATH %>/fullcalendar/main.min.css" rel="stylesheet" />
+  <script src="<%= BASE_PATH %>/fullcalendar/main.min.js"></script>
   <style>
     body { font-family: sans-serif; padding: 1em; }
     #calendar { max-width: 900px; margin: auto; }
@@ -22,10 +30,13 @@
   <script>
   document.addEventListener('DOMContentLoaded', async function () {
     const BASE_PATH = '<%= BASE_PATH %>';
+    console.log('BASE_PATH in script:', BASE_PATH);
+    
     const loading = document.getElementById('loading');
     try {
-      // Use absolute URL for events endpoint
-      const eventsUrl = `https://bino.io${BASE_PATH}/events`;
+      // Use the BASE_PATH for the events URL
+      const eventsUrl = `${BASE_PATH}/events`;
+      console.log('Events URL:', eventsUrl);
       
       console.log('Fetching events from:', eventsUrl);
       const res = await fetch(eventsUrl);

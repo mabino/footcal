@@ -4,6 +4,13 @@ import ical from 'node-ical';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// Add this near the top of your server.js file
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} (BASE_PATH=${BASE_PATH})`);
+  next();
+});
+
+
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
