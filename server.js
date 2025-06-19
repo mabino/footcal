@@ -23,39 +23,27 @@ if (!ICS_URLS.length) {
   process.exit(1);
 }
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
-
-function generateColor(index, total = 12, lightness = 70, saturation = 70, alpha = 0.4) {
-  const hue = (index * 360 / total) % 360;
-  return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
-}
-
-// Serve static files from the 'public' directory
-// IMPORTANT: Mount this at the BASE_PATH to ensure correct URL paths
-app.use(`${BASE_PATH}/fullcalendar`, express.static(path.join(__dirname, 'node_modules', '@fullcalendar', 'core', 'main')));
-
-// Debug middleware
+// Debug middleware to log all requests
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url} (BASE_PATH=${BASE_PATH})`);
+  console.log(`${req.method} ${req.originalUrl} (BASE_PATH=${BASE_PATH})`);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
   next();
 });
 
-// Main route - IMPORTANT: Mount this at the BASE_PATH
-app.get(BASE_PATH, (req, res) => {
-  console.log(`Rendering index with BASE_PATH=${BASE_PATH}`);
+// Serve static files from the 'public' directory
+app.use(`${BASE_PATH}/fullcalendar`, express.static(path.join(__dirname, 'node_modules', '@fullcalendar', 'core', 'main')));
+
+// IMPORTANT: Handle both root path and BASE_PATH
+// This is the key change to fix the redirect loop
+app.get(['/', BASE_PATH, `${BASE_PATH}/`], (req, res) => {
+  console.log(`Rendering index for path: ${req.path}`);
   res.render('index', { 
     BASE_PATH, 
     title: 'Football Calendar'
   });
 });
 
-// Also handle the root path and redirect to the BASE_PATH
-app.get('/', (req, res) => {
-  console.log(`Redirecting from / to ${BASE_PATH}`);
-  res.redirect(BASE_PATH);
-});
-
-// Events API - IMPORTANT: Mount this at the BASE_PATH
+// Events API
 app.get(`${BASE_PATH}/events`, async (req, res) => {
   console.log('Fetching events...');
   try {
@@ -108,6 +96,11 @@ app.get(`${BASE_PATH}/events`, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch events' });
   }
 });
+
+function generateColor(index, total = 12, lightness = 70, saturation = 70, alpha = 0.4) {
+  const hue = (index * 360 / total) % 360;
+  return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+}
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () => {
