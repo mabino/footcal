@@ -196,82 +196,45 @@
         });
     }
     
-function initializeCalendar(events) {
-  try {
-    addStatus(fetchStatus, '✅ Initializing calendar...');
-    
-    // Group events by source
-    const eventSources = {};
-    events.forEach(event => {
-      const source = event.source;
-      if (!eventSources[source]) {
-        eventSources[source] = {
-          id: source,
-          events: [],
-          color: allFeeds[source]?.color || '#888'
-        };
+    function initializeCalendar(events) {
+      try {
+        addStatus(fetchStatus, '✅ Initializing calendar...');
+        calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+          initialView: 'listWeek',
+          headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,listWeek'
+          },
+          events: events,
+          eventDidMount: function (info) {
+            const source = info.event.extendedProps.source;
+            
+            // Set the color
+            const color = allFeeds[source]?.color || '#888';
+            info.el.style.backgroundColor = color;
+            info.el.style.borderColor = color;
+            
+            // Add a data attribute so we can find this element later
+            info.el.setAttribute('data-source', source);
+            
+            console.log('[eventDidMount] Event mounted:', info.event.id, 'source:', source);
+          }
+        });
+        calendar.render();
+        loading.style.display = 'none';
+        addStatus(fetchStatus, '✅ Calendar rendered successfully');
+      } catch (e) {
+        addStatus(fetchStatus, `❌ Error initializing calendar: ${e.message}`, true);
+        loading.textContent = `Failed to initialize calendar: ${e.message}`;
       }
-      eventSources[source].events.push(event);
-    });
-    
-    calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-      initialView: 'listWeek',
-      headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,listWeek'
-      },
-      eventSources: Object.values(eventSources)
-    });
-    
-    calendar.render();
-    loading.style.display = 'none';
-    addStatus(fetchStatus, '✅ Calendar rendered successfully');
-  } catch (e) {
-    addStatus(fetchStatus, `❌ Error initializing calendar: ${e.message}`, true);
-    loading.textContent = `Failed to initialize calendar: ${e.message}`;
-  }
-}
-
-function toggleFeed(feedId, isActive) {
-  console.log('[toggleFeed] feedId:', feedId, 'isActive:', isActive);
-  
-  if (isActive) {
-    activeFeeds[feedId] = allFeeds[feedId];
-  } else {
-    delete activeFeeds[feedId];
-  }
-  
-  // Update "toggle all" checkbox state
-  const allChecked = Object.keys(activeFeeds).length === Object.keys(allFeeds).length;
-  const noneChecked = Object.keys(activeFeeds).length === 0;
-  document.getElementById('toggle-all').checked = allChecked;
-  document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
-  
-  console.log('[toggleFeed] activeFeeds:', Object.keys(activeFeeds));
-  
-  // Use FullCalendar's event source visibility
-  const eventSource = calendar.getEventSourceById(feedId);
-  if (eventSource) {
-    if (isActive) {
-      eventSource.refetch(); // Show the source
-    } else {
-      eventSource.remove(); // Hide the source
-      // Re-add it as hidden so we can show it again later
-      calendar.addEventSource({
-        id: feedId,
-        events: [],
-        color: allFeeds[feedId]?.color || '#888'
-      });
     }
-  }
-}
- 
     
     function createCalendarFilters() {
       const sourcesContainer = document.getElementById('calendar-sources');
       const toggleAll = document.getElementById('toggle-all');
       sourcesContainer.innerHTML = '';
+      
       // Create a checkbox for each feed
       Object.keys(allFeeds).forEach(feedId => {
         const feed = allFeeds[feedId];
@@ -309,58 +272,53 @@ function toggleFeed(feedId, isActive) {
           checkbox.checked = isChecked;
         });
         
-        // Update active feeds and immediately update visibility
+        // Update active feeds
         if (isChecked) {
           activeFeeds = {...allFeeds};
         } else {
           activeFeeds = {};
         }
         
+        // Update visibility immediately
         updateEventVisibility();
       });
     }
     
     function toggleFeed(feedId, isActive) {
       console.log('[toggleFeed] feedId:', feedId, 'isActive:', isActive);
+      
       if (isActive) {
         activeFeeds[feedId] = allFeeds[feedId];
       } else {
         delete activeFeeds[feedId];
       }
+      
       // Update "toggle all" checkbox state
       const allChecked = Object.keys(activeFeeds).length === Object.keys(allFeeds).length;
       const noneChecked = Object.keys(activeFeeds).length === 0;
       document.getElementById('toggle-all').checked = allChecked;
       document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
-      // Debug: log current activeFeeds
+      
       console.log('[toggleFeed] activeFeeds:', Object.keys(activeFeeds));
       
-      // Immediately update event visibility for all currently rendered events
+      // Update visibility immediately
       updateEventVisibility();
     }
 
-
     function updateEventVisibility() {
-  console.log('[updateEventVisibility] Updating visibility for activeFeeds:', Object.keys(activeFeeds));
-  
-  // Get all events from the calendar
-  const allEvents = calendar.getEvents();
-  
-  allEvents.forEach(event => {
-    const source = event.extendedProps.source;
-    const shouldShow = !!activeFeeds[source];
-    
-    // Use FullCalendar's built-in display property
-    event.setProp('display', shouldShow ? 'auto' : 'none');
-    
-    console.log('[updateEventVisibility]', shouldShow ? 'Showing' : 'Hiding', 'event:', event.id, 'from source:', source);
-  });
-}
-
-    
-    function refreshCalendar() {
-      // Simply update visibility without refetching events
-      updateEventVisibility();
+      console.log('[updateEventVisibility] Updating visibility for activeFeeds:', Object.keys(activeFeeds));
+      
+      // Find all event elements that have our data-source attribute
+      const eventElements = document.querySelectorAll('[data-source]');
+      
+      eventElements.forEach(eventEl => {
+        const source = eventEl.getAttribute('data-source');
+        if (source) {
+          const shouldShow = !!activeFeeds[source];
+          eventEl.style.display = shouldShow ? '' : 'none';
+          console.log('[updateEventVisibility]', shouldShow ? 'Showing' : 'Hiding', 'event from source:', source);
+        }
+      });
     }
     
     // Helper function to determine text color based on background color
