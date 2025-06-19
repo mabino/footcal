@@ -209,11 +209,15 @@
           events: events,
           eventDidMount: function (info) {
             const source = info.event.extendedProps.source;
+            // Debug: log every event mount and its visibility
+            console.log('[eventDidMount] event:', info.event.id, 'source:', source, 'active:', !!activeFeeds[source]);
             // Hide events from inactive feeds
             if (!activeFeeds[source]) {
               info.el.style.display = 'none';
+              console.log('[eventDidMount] Hiding event', info.event.id);
             } else {
               info.el.style.display = '';
+              console.log('[eventDidMount] Showing event', info.event.id);
             }
             const color = allFeeds[source]?.color || '#888';
             info.el.style.backgroundColor = color;
@@ -282,6 +286,7 @@
     }
     
     function toggleFeed(feedId, isActive) {
+      console.log('[toggleFeed] feedId:', feedId, 'isActive:', isActive);
       if (isActive) {
         activeFeeds[feedId] = allFeeds[feedId];
       } else {
@@ -292,6 +297,8 @@
       const noneChecked = Object.keys(activeFeeds).length === 0;
       document.getElementById('toggle-all').checked = allChecked;
       document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
+      // Debug: log current activeFeeds
+      console.log('[toggleFeed] activeFeeds:', Object.keys(activeFeeds));
       // Force a re-render of the current view
       const currentView = calendar.view.type;
       calendar.changeView(currentView, calendar.getDate());
