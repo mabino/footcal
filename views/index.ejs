@@ -108,8 +108,8 @@
   <script>
     // Global variables
     let calendar;
-    let allFeeds = {};
-    let activeFeeds = {};
+    let calendarSources = {};
+    let activeCalendars = {};
     
     // Function to toggle debug info
     function toggleDebug() {
@@ -175,18 +175,17 @@
           
           if (data.events && Array.isArray(data.events)) {
             addStatus(fetchStatus, `✅ Found ${data.events.length} events`);
-          } else {
-            addStatus(fetchStatus, `❌ No events array found in response`, true);
-          }
-          
-          // Initialize calendar
-          if (data.events) {
-            allFeeds = data.feeds || {};
-            // Initially all feeds are active
-            activeFeeds = {...allFeeds};
+            
+            // Process calendar sources from events
+            processCalendarSources(data.events);
+            
+            // Initialize calendar
             initializeCalendar(data.events);
+            
+            // Create calendar filters based on sources
             createCalendarFilters();
           } else {
+            addStatus(fetchStatus, `❌ No events array found in response`, true);
             loading.textContent = 'Cannot initialize calendar: No events data';
           }
         })
@@ -194,6 +193,25 @@
           addStatus(fetchStatus, `❌ Error fetching events: ${error}`, true);
           loading.textContent = 'Failed to load calendar: Network error';
         });
+    }
+    
+    function processCalendarSources(events) {
+      // Extract unique calendar sources and their properties
+      events.forEach(event => {
+        if (event.source && !calendarSources[event.source]) {
+          // Create a new calendar source entry
+          calendarSources[event.source] = {
+            id: event.source,
+            name: event.calname || event.source, // Use X-WR-CALNAME if available
+            color: event.color || getRandomColor()
+          };
+          
+          // Initially all calendars are active
+          activeCalendars[event.source] = true;
+        }
+      });
+      
+      addStatus(fetchStatus, `✅ Processed ${Object.keys(calendarSources).length} calendar sources`);
     }
     
     function initializeCalendar(events) {
@@ -207,17 +225,11 @@
             right: 'dayGridMonth,timeGridWeek,listWeek'
           },
           events: events,
-          eventDidMount: function (info) {
-            const source = info.event.extendedProps.source;
-            // Hide events from inactive feeds
-            if (!activeFeeds[source]) {
+          eventDidMount: function(info) {
+            // Apply visibility based on active calendars
+            if (!activeCalendars[info.event.extendedProps.source]) {
               info.el.style.display = 'none';
-              return;
             }
-            
-            const color = allFeeds[source]?.color || '#888';
-            info.el.style.backgroundColor = color;
-            info.el.style.borderColor = color;
           }
         });
         
@@ -234,28 +246,24 @@
       const sourcesContainer = document.getElementById('calendar-sources');
       const toggleAll = document.getElementById('toggle-all');
       
-      // Create a checkbox for each feed
-      Object.keys(allFeeds).forEach(feedId => {
-        const feed = allFeeds[feedId];
-        const color = feed.color || '#888';
-        const name = feed.name || feedId;
-        
+      // Create a checkbox for each calendar source
+      Object.values(calendarSources).forEach(source => {
         const filterDiv = document.createElement('div');
         filterDiv.className = 'calendar-filter';
         
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.id = `filter-${feedId}`;
+        checkbox.id = `filter-${source.id}`;
         checkbox.checked = true;
         checkbox.addEventListener('change', function() {
-          toggleFeed(feedId, this.checked);
+          toggleCalendar(source.id, this.checked);
         });
         
         const label = document.createElement('label');
-        label.htmlFor = `filter-${feedId}`;
-        label.textContent = name;
-        label.style.backgroundColor = color;
-        label.style.color = getContrastColor(color);
+        label.htmlFor = `filter-${source.id}`;
+        label.textContent = source.name;
+        label.style.backgroundColor = source.color;
+        label.style.color = getContrastColor(source.color);
         
         filterDiv.appendChild(checkbox);
         filterDiv.appendChild(label);
@@ -271,49 +279,45 @@
           checkbox.checked = isChecked;
         });
         
-        // Update active feeds and refresh calendar
-        if (isChecked) {
-          activeFeeds = {...allFeeds};
-        } else {
-          activeFeeds = {};
-        }
+        // Update active calendars
+        Object.keys(calendarSources).forEach(sourceId => {
+          activeCalendars[sourceId] = isChecked;
+        });
         
-        refreshCalendar();
+        // Refresh calendar display
+        refreshCalendarDisplay();
       });
     }
     
-    function toggleFeed(feedId, isActive) {
-      if (isActive) {
-        activeFeeds[feedId] = allFeeds[feedId];
-      } else {
-        delete activeFeeds[feedId];
-      }
+    function toggleCalendar(sourceId, isActive) {
+      // Update active state
+      activeCalendars[sourceId] = isActive;
       
       // Update "toggle all" checkbox state
-      const allChecked = Object.keys(activeFeeds).length === Object.keys(allFeeds).length;
-      const noneChecked = Object.keys(activeFeeds).length === 0;
-      document.getElementById('toggle-all').checked = allChecked;
-      document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
+      const totalSources = Object.keys(calendarSources).length;
+      const activeSources = Object.values(activeCalendars).filter(active => active).length;
       
-      refreshCalendar();
+      const toggleAllCheckbox = document.getElementById('toggle-all');
+      toggleAllCheckbox.checked = activeSources === totalSources;
+      toggleAllCheckbox.indeterminate = activeSources > 0 && activeSources < totalSources;
+      
+      // Refresh calendar display
+      refreshCalendarDisplay();
     }
     
-    function refreshCalendar() {
-      // Force re-render of all events to apply visibility changes
-      calendar.getEvents().forEach(event => {
-        const eventElement = event.el;
-        const source = event.extendedProps.source;
+    function refreshCalendarDisplay() {
+      // Update visibility of all events based on active calendars
+      const allEvents = calendar.getEvents();
+      
+      allEvents.forEach(event => {
+        const sourceId = event.extendedProps.source;
+        const isVisible = activeCalendars[sourceId];
         
-        if (eventElement) {
-          if (activeFeeds[source]) {
-            eventElement.style.display = '';
-          } else {
-            eventElement.style.display = 'none';
-          }
-        }
+        // Find the DOM element for this event and update visibility
+        calendar.getEventById(event.id)._def.ui.display = isVisible ? '' : 'none';
       });
       
-      // Alternative approach: refetch events
+      // Force calendar to re-render all events
       calendar.refetchEvents();
     }
     
@@ -332,6 +336,16 @@
       
       // Return black or white based on luminance
       return luminance > 0.5 ? '#000000' : '#ffffff';
+    }
+    
+    // Helper function to generate random colors for calendars without defined colors
+    function getRandomColor() {
+      const letters = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
     }
   </script>
 </body>
