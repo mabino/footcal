@@ -300,22 +300,49 @@ function initializeCalendar(events) {
     }
 
 
-    function updateEventVisibility() {
+ function updateEventVisibility() {
   console.log('[updateEventVisibility] Updating visibility for activeFeeds:', Object.keys(activeFeeds));
   
-  // Get all events from the calendar
-  const allEvents = calendar.getEvents();
+  // Get only the currently visible event elements
+  const eventElements = document.querySelectorAll('.fc-event');
   
-  allEvents.forEach(event => {
-    const source = event.extendedProps.source;
-    const shouldShow = !!activeFeeds[source];
+  eventElements.forEach(eventEl => {
+    // Try different ways to get the event data from the DOM element
+    let eventData = null;
     
-    // Use FullCalendar's built-in display property
-    event.setProp('display', shouldShow ? 'auto' : 'none');
+    // Method 1: Check if there's a data attribute
+    if (eventEl.dataset && eventEl.dataset.eventId) {
+      const eventId = eventEl.dataset.eventId;
+      eventData = calendar.getEventById(eventId);
+    }
     
-    console.log('[updateEventVisibility]', shouldShow ? 'Showing' : 'Hiding', 'event:', event.id, 'from source:', source);
+    // Method 2: Look for FullCalendar's internal event reference
+    if (!eventData && eventEl.fcSeg) {
+      eventData = eventEl.fcSeg.event;
+    }
+    
+    // Method 3: Check classList for source information
+    if (!eventData) {
+      const classList = Array.from(eventEl.classList);
+      const sourceClass = classList.find(cls => cls.startsWith('fc-event-source-'));
+      if (sourceClass) {
+        const source = sourceClass.replace('fc-event-source-', '');
+        const shouldShow = !!activeFeeds[source];
+        eventEl.style.display = shouldShow ? '' : 'none';
+        return;
+      }
+    }
+    
+    // If we found event data, use the source from extendedProps
+    if (eventData && eventData.extendedProps && eventData.extendedProps.source) {
+      const source = eventData.extendedProps.source;
+      const shouldShow = !!activeFeeds[source];
+      eventEl.style.display = shouldShow ? '' : 'none';
+      console.log('[updateEventVisibility]', shouldShow ? 'Showing' : 'Hiding', 'event from source:', source);
+    }
   });
 }
+ 
 
     
     function refreshCalendar() {
