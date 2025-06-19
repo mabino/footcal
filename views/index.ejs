@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title><%= title %></title>
+  <script src="<%= BASE_PATH %>/fullcalendar/main.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    #calendar { max-width: 900px; margin: auto; }
+  </style>
+</head>
+<body>
+  <h2><%= title %></h2>
+  <div id="legend" style="max-width: 900px; margin: auto; padding-bottom: 1em;">
+    <div id="checkboxes" style="margin-top: 1em;"></div>
+  </div>
+  <div id="calendar"></div>
+  <div id="loading" style="text-align: center; font-size: 1.2em;">Loading...</div>
+
+  <script>
+  const BASE_PATH = '<%= BASE_PATH %>';
+  
+  document.addEventListener('DOMContentLoaded', async function () {
+    const loading = document.getElementById('loading');
+    try {
+      const res = await fetch(`${BASE_PATH}/events`);
+      const { events, feeds } = await res.json();
+      loading.style.display = 'none';
+
+      const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+        initialView: 'listWeek',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'timeGridWeek,listWeek'
+        },
+        events: events,
+        eventDidMount: function (info) {
+          const source = info.event.extendedProps.source;
+          const color = feeds[source]?.color || '#888';
+          info.el.style.backgroundColor = color;
+          info.el.style.borderColor = color;
+        }
+      });
+
+      calendar.render();
+
+      // Generate legend and checkboxes
+      const legend = document.getElementById('legend');
+      const ul = document.createElement('ul');
+      ul.style.listStyle = 'none';
+      ul.style.paddingLeft = '0';
+
+      const checkboxes = document.getElementById('checkboxes');
+
+      // Add "Show All" checkbox
+      const allCheckbox = document.createElement('input');
+      allCheckbox.type = 'checkbox';
+      allCheckbox.checked = true;
+      allCheckbox.id = 'toggle-all';
+      allCheckbox.addEventListener('change', function () {
+        const isChecked = this.checked;
+        const checkboxList = document.querySelectorAll('input[id^="toggle-feed-"]');
+        checkboxList.forEach(cb => {
+          cb.checked = isChecked;
+        });
+        updateCalendarEvents();
+      });
+
+      const allLabel = document.createElement('label');
+      allLabel.htmlFor = 'toggle-all';
+      allLabel.innerText = 'Show/Hide All';
+
+      const allDiv = document.createElement('div');
+      allDiv.appendChild(allCheckbox);
+      allDiv.appendChild(allLabel);
+      checkboxes.appendChild(allDiv);
+
+      // Create event sources for each feed
+      const eventSources = {};
+      for (const [id, meta] of Object.entries(feeds)) {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = true;
+        checkbox.id = `toggle-feed-${id}`;
+        checkbox.addEventListener('change', function () {
+          const allChecked = Array.from(document.querySelectorAll('input[id^="toggle-feed-"]'))
+            .every(cb => cb.checked);
+          allCheckbox.checked = allChecked;
+          updateCalendarEvents();
+        });
+
+        const label = document.createElement('label');
+        label.htmlFor = `toggle-feed-${id}`;
+        label.innerText = meta.name;
+
+        const li = document.createElement('li');
+        li.innerHTML = `<span style="display:inline-block;width:12px;height:12px;background:${meta.color};margin-right:8px;"></span>`;
+        li.appendChild(checkbox);
+        li.appendChild(label);
+        ul.appendChild(li);
+
+        // Create event source for this feed
+        eventSources[id] = events.filter(event => event.source === id);
+      }
+
+      legend.appendChild(ul);
+
+      function updateCalendarEvents() {
+        calendar.removeAllEvents();
+        
+        // Add events for checked sources
+        Object.entries(eventSources).forEach(([id, sourceEvents]) => {
+          const checkbox = document.getElementById(`toggle-feed-${id}`);
+          if (checkbox && checkbox.checked) {
+            calendar.addEventSource(sourceEvents);
+          }
+        });
+      }
+    } catch (err) {
+      loading.innerText = 'Failed to load calendar data.';
+      console.error('Error loading calendar data:', err);
+    }
+  });
+  </script>
+</body>
+</html>

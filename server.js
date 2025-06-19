@@ -5,7 +5,16 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const app = express();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Configure EJS as the template engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+// The BASE_PATH is only used for frontend URLs, not for route definitions
+const BASE_PATH = process.env.BASE_PATH || '/fc';
 const ICS_URLS = (process.env.ICS_URLS || '').split(',').map(u => u.trim());
+
 if (!ICS_URLS.length) {
   console.error('Error: No ICS URLs provided. Set the ICS_URLS environment variable.');
   process.exit(1);
@@ -18,7 +27,7 @@ function generateColor(index, total = 12, lightness = 70, saturation = 70, alpha
   return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
 }
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Serve static files from 'public' directory at the root
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Global cache
@@ -40,7 +49,6 @@ async function fetchAllEvents() {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const text = await resp.text();
 
-      // Extract calendar name from X-WR-CALNAME
       const calNameMatch = text.match(/X-WR-CALNAME:(.+)/i);
       if (calNameMatch) calendarName = calNameMatch[1].trim();
 
@@ -68,6 +76,15 @@ async function fetchAllEvents() {
   return { events, feedMeta: meta };
 }
 
+// Main route - render the template
+app.get('/', (_req, res) => {
+  res.render('index', { 
+    BASE_PATH, // Pass BASE_PATH to the template for frontend URLs
+    title: 'Football Calendar'
+  });
+});
+
+// API endpoint for events
 app.get('/events', async (_req, res) => {
   const now = Date.now();
 
@@ -86,4 +103,5 @@ app.get('/events', async (_req, res) => {
   }
 });
 
-app.listen(8080, () => console.log('Listening on http://0.0.0.0:8080'));
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log(`Listening on http://0.0.0.0:${PORT} (BASE_PATH: ${BASE_PATH})`));
