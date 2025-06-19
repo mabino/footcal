@@ -283,6 +283,7 @@
     }
     
     function toggleFeed(feedId, isActive) {
+      console.log('Toggling feed:', feedId, 'Active:', isActive);
       if (isActive) {
         activeFeeds[feedId] = allFeeds[feedId];
       } else {
@@ -295,16 +296,25 @@
       document.getElementById('toggle-all').checked = allChecked;
       document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
 
-      // Hide/show events for this feed only
+      let found = false;
       calendar.getEvents().forEach(event => {
         if (event.extendedProps.source === feedId) {
-          if (isActive) {
-            if (event.el) event.el.style.display = '';
+          found = true;
+          if (event.el) {
+            event.el.style.display = isActive ? '' : 'none';
+            console.log('Set event', event.id, 'display to', isActive ? 'visible' : 'none');
           } else {
-            if (event.el) event.el.style.display = 'none';
+            console.warn('Event', event.id, 'has no el property yet.');
           }
         }
       });
+      if (!found) {
+        console.warn('No events found for feed', feedId);
+      }
+      // Fallback: force rerender if no event.el was found
+      setTimeout(() => {
+        calendar.updateSize();
+      }, 100);
     }
 
     function filterCalendarEventsDOM() {
