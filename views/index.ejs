@@ -68,6 +68,8 @@
       border: 1px solid #ccc;
       cursor: pointer;
     }
+    
+    .fc-hide { display: none !important; }
   </style>
 </head>
 <body>
@@ -299,17 +301,14 @@
       document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
       // Debug: log current activeFeeds
       console.log('[toggleFeed] activeFeeds:', Object.keys(activeFeeds));
-      // Force a re-render of the current view
-      const currentView = calendar.view.type;
-      calendar.changeView(currentView, calendar.getDate());
-      // Manually update event visibility for currently rendered events
+      // Visually hide/show events by toggling a CSS class
       calendar.getEvents().forEach(event => {
         const source = event.extendedProps.source;
         if (event.el) {
           if (activeFeeds[source]) {
-            event.el.style.display = '';
+            event.el.classList.remove('fc-hide');
           } else {
-            event.el.style.display = 'none';
+            event.el.classList.add('fc-hide');
           }
         }
       });
@@ -365,6 +364,23 @@
       // Return black or white based on luminance
       return luminance > 0.5 ? '#000000' : '#ffffff';
     }
+    
+    // Also, on calendar view change, re-apply the CSS class to new event elements
+    function reapplyEventVisibility() {
+      calendar.getEvents().forEach(event => {
+        const source = event.extendedProps.source;
+        if (event.el) {
+          if (activeFeeds[source]) {
+            event.el.classList.remove('fc-hide');
+          } else {
+            event.el.classList.add('fc-hide');
+          }
+        }
+      });
+    }
+    // Hook into view changes
+    // After calendar.render();
+    calendar.on('datesSet', reapplyEventVisibility);
   </script>
 </body>
 </html>
