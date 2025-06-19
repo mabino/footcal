@@ -255,7 +255,7 @@
         label.htmlFor = `filter-${feedId}`;
         label.textContent = name;
         label.style.backgroundColor = color;
-        label.style.color = getContrastColor(color);
+        label.style.color = '#000';
 
         filterDiv.appendChild(checkbox);
         filterDiv.appendChild(label);
@@ -295,8 +295,16 @@
       document.getElementById('toggle-all').checked = allChecked;
       document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
 
-      // Instead of refetching, just hide/show event elements in the DOM
-      filterCalendarEventsDOM();
+      // Hide/show events for this feed only
+      calendar.getEvents().forEach(event => {
+        if (event.extendedProps.source === feedId) {
+          if (isActive) {
+            if (event.el) event.el.style.display = '';
+          } else {
+            if (event.el) event.el.style.display = 'none';
+          }
+        }
+      });
     }
 
     function filterCalendarEventsDOM() {
