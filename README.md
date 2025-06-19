@@ -4,4 +4,4 @@ Footcal is a project designed to help view upcoming football matches from ICS fe
 
 # Example Usage
 
-docker run -p 8080:8080 -e ICS_URLS="https://www.example.com/fixtures.ics,https://www.example.com/other-fixtures.ics" footcal
+`docker run -p 8080:8080 -e ICS_URLS="https://www.example.com/fixtures.ics,https://www.example.com/other-fixtures.ics" footcal`
