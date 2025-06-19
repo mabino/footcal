@@ -211,7 +211,13 @@
             const source = info.event.extendedProps.source;
             // Debug: log every event mount and its visibility
             console.log('[eventDidMount] event:', info.event.id, 'source:', source, 'active:', !!activeFeeds[source]);
-            // Hide events from inactive feeds
+            
+            // Set the color first
+            const color = allFeeds[source]?.color || '#888';
+            info.el.style.backgroundColor = color;
+            info.el.style.borderColor = color;
+            
+            // Set initial visibility based on current activeFeeds state
             if (!activeFeeds[source]) {
               info.el.style.display = 'none';
               console.log('[eventDidMount] Hiding event', info.event.id);
@@ -219,9 +225,6 @@
               info.el.style.display = '';
               console.log('[eventDidMount] Showing event', info.event.id);
             }
-            const color = allFeeds[source]?.color || '#888';
-            info.el.style.backgroundColor = color;
-            info.el.style.borderColor = color;
           }
         });
         calendar.render();
@@ -274,14 +277,14 @@
           checkbox.checked = isChecked;
         });
         
-        // Update active feeds and refresh calendar
+        // Update active feeds and immediately update visibility
         if (isChecked) {
           activeFeeds = {...allFeeds};
         } else {
           activeFeeds = {};
         }
         
-        refreshCalendar();
+        updateEventVisibility();
       });
     }
     
@@ -299,51 +302,31 @@
       document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
       // Debug: log current activeFeeds
       console.log('[toggleFeed] activeFeeds:', Object.keys(activeFeeds));
-      // Immediately update event visibility for currently rendered events (no view change)
-      calendar.getEvents().forEach(event => {
-        const source = event.extendedProps.source;
-        if (event.el) {
-          if (activeFeeds[source]) {
-            event.el.style.display = '';
-          } else {
-            event.el.style.display = 'none';
-          }
-        }
-      });
+      
+      // Immediately update event visibility for all currently rendered events
+      updateEventVisibility();
     }
 
-    function filterCalendarEventsDOM() {
-      // Only update events currently rendered in the DOM
+    function updateEventVisibility() {
+      // Update visibility for all currently rendered events in the DOM
       calendar.getEvents().forEach(event => {
         const source = event.extendedProps.source;
         const eventEl = event.el;
         if (eventEl) {
           if (activeFeeds[source]) {
             eventEl.style.display = '';
+            console.log('[updateEventVisibility] Showing event:', event.id, 'from source:', source);
           } else {
             eventEl.style.display = 'none';
+            console.log('[updateEventVisibility] Hiding event:', event.id, 'from source:', source);
           }
         }
       });
     }
     
     function refreshCalendar() {
-      // Force re-render of all events to apply visibility changes
-      calendar.getEvents().forEach(event => {
-        const eventElement = event.el;
-        const source = event.extendedProps.source;
-        
-        if (eventElement) {
-          if (activeFeeds[source]) {
-            eventElement.style.display = '';
-          } else {
-            eventElement.style.display = 'none';
-          }
-        }
-      });
-      
-      // Alternative approach: refetch events
-      calendar.refetchEvents();
+      // Simply update visibility without refetching events
+      updateEventVisibility();
     }
     
     // Helper function to determine text color based on background color
