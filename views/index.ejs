@@ -196,45 +196,37 @@
         });
     }
     
-    function initializeCalendar(events) {
-      try {
-        addStatus(fetchStatus, '✅ Initializing calendar...');
-        calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-          initialView: 'listWeek',
-          headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,listWeek'
-          },
-          events: events,
-          eventDidMount: function (info) {
-            const source = info.event.extendedProps.source;
-            // Debug: log every event mount and its visibility
-            console.log('[eventDidMount] event:', info.event.id, 'source:', source, 'active:', !!activeFeeds[source]);
-            
-            // Set the color first
-            const color = allFeeds[source]?.color || '#888';
-            info.el.style.backgroundColor = color;
-            info.el.style.borderColor = color;
-            
-            // Set initial visibility based on current activeFeeds state
-            if (!activeFeeds[source]) {
-              info.el.style.display = 'none';
-              console.log('[eventDidMount] Hiding event', info.event.id);
-            } else {
-              info.el.style.display = '';
-              console.log('[eventDidMount] Showing event', info.event.id);
-            }
-          }
-        });
-        calendar.render();
-        loading.style.display = 'none';
-        addStatus(fetchStatus, '✅ Calendar rendered successfully');
-      } catch (e) {
-        addStatus(fetchStatus, `❌ Error initializing calendar: ${e.message}`, true);
-        loading.textContent = `Failed to initialize calendar: ${e.message}`;
+function initializeCalendar(events) {
+  try {
+    addStatus(fetchStatus, '✅ Initializing calendar...');
+    calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+      initialView: 'listWeek',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,listWeek'
+      },
+      events: events,
+      eventDidMount: function (info) {
+        const source = info.event.extendedProps.source;
+        
+        // Set the color
+        const color = allFeeds[source]?.color || '#888';
+        info.el.style.backgroundColor = color;
+        info.el.style.borderColor = color;
+        
+        console.log('[eventDidMount] Styled event:', info.event.id, 'source:', source);
       }
-    }
+    });
+    calendar.render();
+    loading.style.display = 'none';
+    addStatus(fetchStatus, '✅ Calendar rendered successfully');
+  } catch (e) {
+    addStatus(fetchStatus, `❌ Error initializing calendar: ${e.message}`, true);
+    loading.textContent = `Failed to initialize calendar: ${e.message}`;
+  }
+}
+ 
     
     function createCalendarFilters() {
       const sourcesContainer = document.getElementById('calendar-sources');
@@ -307,22 +299,24 @@
       updateEventVisibility();
     }
 
+
     function updateEventVisibility() {
-      // Update visibility for all currently rendered events in the DOM
-      calendar.getEvents().forEach(event => {
-        const source = event.extendedProps.source;
-        const eventEl = event.el;
-        if (eventEl) {
-          if (activeFeeds[source]) {
-            eventEl.style.display = '';
-            console.log('[updateEventVisibility] Showing event:', event.id, 'from source:', source);
-          } else {
-            eventEl.style.display = 'none';
-            console.log('[updateEventVisibility] Hiding event:', event.id, 'from source:', source);
-          }
-        }
-      });
-    }
+  console.log('[updateEventVisibility] Updating visibility for activeFeeds:', Object.keys(activeFeeds));
+  
+  // Get all events from the calendar
+  const allEvents = calendar.getEvents();
+  
+  allEvents.forEach(event => {
+    const source = event.extendedProps.source;
+    const shouldShow = !!activeFeeds[source];
+    
+    // Use FullCalendar's built-in display property
+    event.setProp('display', shouldShow ? 'auto' : 'none');
+    
+    console.log('[updateEventVisibility]', shouldShow ? 'Showing' : 'Hiding', 'event:', event.id, 'from source:', source);
+  });
+}
+
     
     function refreshCalendar() {
       // Simply update visibility without refetching events
