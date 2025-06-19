@@ -3,21 +3,64 @@
 <head>
   <meta charset="utf-8" />
   <title><%= title %></title>
-  <!-- Remove the CSS link since it doesn't exist -->
   <script src="<%= BASE_PATH %>/fullcalendar/index.global.js"></script>
   <style>
     body { font-family: sans-serif; padding: 1em; }
-    #debug { background: #f0f0f0; padding: 10px; border: 1px solid #ccc; margin-bottom: 20px; display: none; } /* Hide debug by default */
+    #debug { background: #f0f0f0; padding: 10px; border: 1px solid #ccc; margin-bottom: 20px; display: none; }
     .error { color: red; font-weight: bold; }
     pre { background: #eee; padding: 10px; overflow: auto; }
     
-    /* Add some basic styling for the calendar */
+    /* Calendar styling */
     #calendar {
       max-width: 1100px;
       margin: 0 auto;
     }
     
-    /* Add a toggle button for debug info */
+    /* Calendar filters styling */
+    #calendar-filters {
+      max-width: 1100px;
+      margin: 0 auto 20px auto;
+      padding: 10px;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    
+    .filter-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    
+    .calendar-filter {
+      display: inline-block;
+      margin-right: 15px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    
+    .calendar-filter input {
+      margin-right: 5px;
+      cursor: pointer;
+    }
+    
+    .calendar-filter label {
+      cursor: pointer;
+      padding: 3px 8px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+    
+    .calendar-filter label:hover {
+      opacity: 0.9;
+    }
+    
+    #toggle-all-container {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    /* Debug toggle button */
     #debug-toggle {
       margin-bottom: 10px;
       padding: 5px 10px;
@@ -48,9 +91,26 @@
   </div>
   
   <div id="loading">Loading calendar...</div>
+  
+  <!-- Calendar filters will be added here -->
+  <div id="calendar-filters">
+    <div id="toggle-all-container">
+      <div class="calendar-filter">
+        <input type="checkbox" id="toggle-all" checked>
+        <label for="toggle-all">Show/Hide All</label>
+      </div>
+    </div>
+    <div id="calendar-sources"></div>
+  </div>
+  
   <div id="calendar"></div>
   
   <script>
+    // Global variables
+    let calendar;
+    let allFeeds = {};
+    let activeFeeds = {};
+    
     // Function to toggle debug info
     function toggleDebug() {
       const debug = document.getElementById('debug');
@@ -121,7 +181,11 @@
           
           // Initialize calendar
           if (data.events) {
-            initializeCalendar(data.events, data.feeds);
+            allFeeds = data.feeds || {};
+            // Initially all feeds are active
+            activeFeeds = {...allFeeds};
+            initializeCalendar(data.events);
+            createCalendarFilters();
           } else {
             loading.textContent = 'Cannot initialize calendar: No events data';
           }
@@ -132,10 +196,10 @@
         });
     }
     
-    function initializeCalendar(events, feeds) {
+    function initializeCalendar(events) {
       try {
         addStatus(fetchStatus, '✅ Initializing calendar...');
-        const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+        calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
           initialView: 'listWeek',
           headerToolbar: {
             left: 'prev,next today',
@@ -145,7 +209,13 @@
           events: events,
           eventDidMount: function (info) {
             const source = info.event.extendedProps.source;
-            const color = feeds[source]?.color || '#888';
+            // Hide events from inactive feeds
+            if (!activeFeeds[source]) {
+              info.el.style.display = 'none';
+              return;
+            }
+            
+            const color = allFeeds[source]?.color || '#888';
             info.el.style.backgroundColor = color;
             info.el.style.borderColor = color;
           }
@@ -158,6 +228,110 @@
         addStatus(fetchStatus, `❌ Error initializing calendar: ${e.message}`, true);
         loading.textContent = `Failed to initialize calendar: ${e.message}`;
       }
+    }
+    
+    function createCalendarFilters() {
+      const sourcesContainer = document.getElementById('calendar-sources');
+      const toggleAll = document.getElementById('toggle-all');
+      
+      // Create a checkbox for each feed
+      Object.keys(allFeeds).forEach(feedId => {
+        const feed = allFeeds[feedId];
+        const color = feed.color || '#888';
+        const name = feed.name || feedId;
+        
+        const filterDiv = document.createElement('div');
+        filterDiv.className = 'calendar-filter';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `filter-${feedId}`;
+        checkbox.checked = true;
+        checkbox.addEventListener('change', function() {
+          toggleFeed(feedId, this.checked);
+        });
+        
+        const label = document.createElement('label');
+        label.htmlFor = `filter-${feedId}`;
+        label.textContent = name;
+        label.style.backgroundColor = color;
+        label.style.color = getContrastColor(color);
+        
+        filterDiv.appendChild(checkbox);
+        filterDiv.appendChild(label);
+        sourcesContainer.appendChild(filterDiv);
+      });
+      
+      // Set up toggle all functionality
+      toggleAll.addEventListener('change', function() {
+        const isChecked = this.checked;
+        
+        // Update all checkboxes
+        document.querySelectorAll('#calendar-sources input[type="checkbox"]').forEach(checkbox => {
+          checkbox.checked = isChecked;
+        });
+        
+        // Update active feeds and refresh calendar
+        if (isChecked) {
+          activeFeeds = {...allFeeds};
+        } else {
+          activeFeeds = {};
+        }
+        
+        refreshCalendar();
+      });
+    }
+    
+    function toggleFeed(feedId, isActive) {
+      if (isActive) {
+        activeFeeds[feedId] = allFeeds[feedId];
+      } else {
+        delete activeFeeds[feedId];
+      }
+      
+      // Update "toggle all" checkbox state
+      const allChecked = Object.keys(activeFeeds).length === Object.keys(allFeeds).length;
+      const noneChecked = Object.keys(activeFeeds).length === 0;
+      document.getElementById('toggle-all').checked = allChecked;
+      document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
+      
+      refreshCalendar();
+    }
+    
+    function refreshCalendar() {
+      // Force re-render of all events to apply visibility changes
+      calendar.getEvents().forEach(event => {
+        const eventElement = event.el;
+        const source = event.extendedProps.source;
+        
+        if (eventElement) {
+          if (activeFeeds[source]) {
+            eventElement.style.display = '';
+          } else {
+            eventElement.style.display = 'none';
+          }
+        }
+      });
+      
+      // Alternative approach: refetch events
+      calendar.refetchEvents();
+    }
+    
+    // Helper function to determine text color based on background color
+    function getContrastColor(hexColor) {
+      // Remove # if present
+      hexColor = hexColor.replace('#', '');
+      
+      // Convert to RGB
+      const r = parseInt(hexColor.substr(0, 2), 16);
+      const g = parseInt(hexColor.substr(2, 2), 16);
+      const b = parseInt(hexColor.substr(4, 2), 16);
+      
+      // Calculate luminance
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      
+      // Return black or white based on luminance
+      return luminance > 0.5 ? '#000000' : '#ffffff';
     }
   </script>
 </body>
