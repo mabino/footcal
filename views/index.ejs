@@ -212,15 +212,14 @@
             // Hide events from inactive feeds
             if (!activeFeeds[source]) {
               info.el.style.display = 'none';
-              return;
+            } else {
+              info.el.style.display = '';
             }
-            
             const color = allFeeds[source]?.color || '#888';
             info.el.style.backgroundColor = color;
             info.el.style.borderColor = color;
           }
         });
-        
         calendar.render();
         loading.style.display = 'none';
         addStatus(fetchStatus, '✅ Calendar rendered successfully');
@@ -283,38 +282,18 @@
     }
     
     function toggleFeed(feedId, isActive) {
-      console.log('Toggling feed:', feedId, 'Active:', isActive);
       if (isActive) {
         activeFeeds[feedId] = allFeeds[feedId];
       } else {
         delete activeFeeds[feedId];
       }
-
       // Update "toggle all" checkbox state
       const allChecked = Object.keys(activeFeeds).length === Object.keys(allFeeds).length;
       const noneChecked = Object.keys(activeFeeds).length === 0;
       document.getElementById('toggle-all').checked = allChecked;
       document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
-
-      let found = false;
-      calendar.getEvents().forEach(event => {
-        if (event.extendedProps.source === feedId) {
-          found = true;
-          if (event.el) {
-            event.el.style.display = isActive ? '' : 'none';
-            console.log('Set event', event.id, 'display to', isActive ? 'visible' : 'none');
-          } else {
-            console.warn('Event', event.id, 'has no el property yet.');
-          }
-        }
-      });
-      if (!found) {
-        console.warn('No events found for feed', feedId);
-      }
-      // Fallback: force rerender if no event.el was found
-      setTimeout(() => {
-        calendar.updateSize();
-      }, 100);
+      // Efficiently update event visibility
+      calendar.rerenderEvents();
     }
 
     function filterCalendarEventsDOM() {
