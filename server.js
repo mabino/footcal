@@ -12,12 +12,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Add request logging middleware
+// Add this near the top of your server.js file
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+  console.log(`${req.method} ${req.url} (BASE_PATH=${BASE_PATH})`);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
   next();
 });
-
 
 
 // The BASE_PATH is only used for frontend URLs, not for route definitions
@@ -118,11 +118,17 @@ app.get('/debug', (_req, res) => {
   });
 });
 
-// Main route - render the template
+// Also modify the main route to log more information
 app.get('/', (_req, res) => {
   console.log(`Rendering index with BASE_PATH=${BASE_PATH}`);
+  console.log('Full URL path:', _req.originalUrl);
+  console.log('Host:', _req.headers.host);
+  console.log('X-Forwarded-Host:', _req.headers['x-forwarded-host']);
+  console.log('X-Forwarded-Proto:', _req.headers['x-forwarded-proto']);
+  console.log('X-Forwarded-For:', _req.headers['x-forwarded-for']);
+  
   res.render('index', { 
-    BASE_PATH, // Pass BASE_PATH to the template for frontend URLs
+    BASE_PATH, 
     title: 'Football Calendar'
   });
 });
