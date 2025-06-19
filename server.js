@@ -49,31 +49,38 @@ app.get(`${BASE_PATH}/events`, async (req, res) => {
   try {
     const feeds = {};
     const events = [];
-    
+
     await Promise.all(ICS_URLS.map(async (url, index) => {
       try {
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const text = await response.text();
         const data = ical.parseICS(text);
-        
-        // Extract feed name from URL
+
+        // Extract X-WR-CALNAME from ICS text
+        let calName = null;
+        const calNameMatch = text.match(/^X-WR-CALNAME:(.+)$/m);
+        if (calNameMatch) {
+          calName = calNameMatch[1].trim();
+        }
+
+        // Fallback to hostname if no X-WR-CALNAME
         const urlObj = new URL(url);
         const feedId = `feed${index}`;
-        const feedName = urlObj.hostname;
-        
+        const feedName = calName || urlObj.hostname;
+
         feeds[feedId] = {
           name: feedName,
           color: generateColor(index)
         };
-        
+
         // Process events
         for (const k in data) {
           if (data[k].type !== 'VEVENT') continue;
-          
+
           const event = data[k];
           events.push({
             id: `${feedId}-${k}`,
@@ -89,7 +96,7 @@ app.get(`${BASE_PATH}/events`, async (req, res) => {
         console.error(`Error fetching or parsing feed ${url}:`, error);
       }
     }));
-    
+
     res.json({ events, feeds });
   } catch (error) {
     console.error('Error fetching events:', error);

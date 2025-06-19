@@ -233,16 +233,16 @@
     function createCalendarFilters() {
       const sourcesContainer = document.getElementById('calendar-sources');
       const toggleAll = document.getElementById('toggle-all');
-      
+      sourcesContainer.innerHTML = '';
       // Create a checkbox for each feed
       Object.keys(allFeeds).forEach(feedId => {
         const feed = allFeeds[feedId];
         const color = feed.color || '#888';
         const name = feed.name || feedId;
-        
+
         const filterDiv = document.createElement('div');
         filterDiv.className = 'calendar-filter';
-        
+
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = `filter-${feedId}`;
@@ -250,13 +250,13 @@
         checkbox.addEventListener('change', function() {
           toggleFeed(feedId, this.checked);
         });
-        
+
         const label = document.createElement('label');
         label.htmlFor = `filter-${feedId}`;
         label.textContent = name;
         label.style.backgroundColor = color;
         label.style.color = getContrastColor(color);
-        
+
         filterDiv.appendChild(checkbox);
         filterDiv.appendChild(label);
         sourcesContainer.appendChild(filterDiv);
