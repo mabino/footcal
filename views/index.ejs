@@ -3,200 +3,160 @@
 <head>
   <meta charset="utf-8" />
   <title><%= title %></title>
-  <script>
-    // Debug logging to see what paths are being used
-    console.log('BASE_PATH from server:', '<%= BASE_PATH %>');
-    const cssUrl = '<%= BASE_PATH %>/fullcalendar/main.min.css';
-    const jsUrl = '<%= BASE_PATH %>/fullcalendar/main.min.js';
-    console.log('CSS URL:', cssUrl);
-    console.log('JS URL:', jsUrl);
-    
-    // Log all script and link elements
-    window.addEventListener('DOMContentLoaded', () => {
-      console.log('All script elements:');
-      document.querySelectorAll('script').forEach((script, i) => {
-        console.log(`Script ${i}:`, script.src || 'inline script');
-      });
-      
-      console.log('All link elements:');
-      document.querySelectorAll('link').forEach((link, i) => {
-        console.log(`Link ${i}:`, link.href);
-      });
-    });
-    
-    // Add error event listeners to scripts
-    window.addEventListener('error', function(e) {
-      console.log('Resource error:', e.target.src || e.target.href, e);
-    }, true);
-  </script>
-  
-  <!-- Make sure to use the BASE_PATH variable correctly -->
-  <link href="<%= BASE_PATH %>/fullcalendar/main.min.css" rel="stylesheet" />
-  <script src="<%= BASE_PATH %>/fullcalendar/main.min.js"></script>
   <style>
     body { font-family: sans-serif; padding: 1em; }
-    #calendar { max-width: 900px; margin: auto; }
+    #debug { background: #f0f0f0; padding: 10px; border: 1px solid #ccc; margin-bottom: 20px; }
+    .error { color: red; font-weight: bold; }
+    pre { background: #eee; padding: 10px; overflow: auto; }
   </style>
 </head>
 <body>
-  <h2><%= title %></h2>
-  <div id="debug-info" style="background-color: #f8f9fa; padding: 10px; margin-bottom: 20px; border: 1px solid #ddd;">
-    <h3>Debug Information</h3>
-    <p>BASE_PATH: <code><%= BASE_PATH %></code></p>
-    <p>CSS URL: <code><%= BASE_PATH %>/fullcalendar/main.min.css</code></p>
-    <p>JS URL: <code><%= BASE_PATH %>/fullcalendar/main.min.js</code></p>
-    <p>Events URL: <code><%= BASE_PATH %>/events</code></p>
-    <p>Current URL: <code id="current-url"></code></p>
-    <p>Document Base URL: <code id="base-url"></code></p>
-    <script>
-      document.getElementById('current-url').textContent = window.location.href;
-      document.getElementById('base-url').textContent = document.baseURI;
-    </script>
+  <h1><%= title %></h1>
+  
+  <div id="debug">
+    <h2>Debug Information</h2>
+    <p>BASE_PATH: <strong><%= BASE_PATH %></strong></p>
+    <p>Current URL: <strong id="current-url"></strong></p>
+    
+    <h3>Resource URLs</h3>
+    <ul>
+      <li>CSS: <code><%= BASE_PATH %>/fullcalendar/main.min.css</code></li>
+      <li>JS: <code><%= BASE_PATH %>/fullcalendar/main.min.js</code></li>
+      <li>Events: <code><%= BASE_PATH %>/events</code></li>
+    </ul>
+    
+    <div id="resource-status">Loading resource status...</div>
+    <div id="fetch-status">Fetch status will appear here...</div>
   </div>
   
-  <div id="legend" style="max-width: 900px; margin: auto; padding-bottom: 1em;">
-    <div id="checkboxes" style="margin-top: 1em;"></div>
-  </div>
+  <div id="loading">Loading calendar...</div>
   <div id="calendar"></div>
-  <div id="loading" style="text-align: center; font-size: 1.2em;">Loading...</div>
-
+  
   <script>
-  document.addEventListener('DOMContentLoaded', async function () {
-    const BASE_PATH = '<%= BASE_PATH %>';
-    console.log('BASE_PATH in script:', BASE_PATH);
+    // Immediately log basic information
+    console.log('Page loaded');
+    console.log('BASE_PATH:', '<%= BASE_PATH %>');
+    document.getElementById('current-url').textContent = window.location.href;
     
-    // Check if FullCalendar is loaded
-    console.log('FullCalendar loaded:', typeof FullCalendar !== 'undefined');
-    
+    // Check resources
+    const resourceStatus = document.getElementById('resource-status');
+    const fetchStatus = document.getElementById('fetch-status');
     const loading = document.getElementById('loading');
-    try {
-      // Use the BASE_PATH for the events URL
-      const eventsUrl = `${BASE_PATH}/events`;
-      console.log('Events URL:', eventsUrl);
+    
+    // Function to add status messages
+    function addStatus(element, message, isError = false) {
+      const p = document.createElement('p');
+      p.textContent = message;
+      if (isError) p.className = 'error';
+      element.appendChild(p);
+      console.log(isError ? 'ERROR: ' : 'INFO: ', message);
+    }
+    
+    // Clear initial message
+    resourceStatus.textContent = '';
+    
+    // Test CSS loading
+    const cssUrl = '<%= BASE_PATH %>/fullcalendar/main.min.css';
+    const cssLink = document.createElement('link');
+    cssLink.rel = 'stylesheet';
+    cssLink.href = cssUrl;
+    cssLink.onload = () => addStatus(resourceStatus, `✅ CSS loaded successfully: ${cssUrl}`);
+    cssLink.onerror = () => addStatus(resourceStatus, `❌ Failed to load CSS: ${cssUrl}`, true);
+    document.head.appendChild(cssLink);
+    
+    // Test JS loading
+    const jsUrl = '<%= BASE_PATH %>/fullcalendar/main.min.js';
+    const script = document.createElement('script');
+    script.src = jsUrl;
+    script.onload = () => {
+      addStatus(resourceStatus, `✅ JS loaded successfully: ${jsUrl}`);
       
-      console.log('Fetching events from:', eventsUrl);
-      const res = await fetch(eventsUrl);
-      if (!res.ok) {
-        console.error('Events fetch failed with status:', res.status);
-        throw new Error(`HTTP ${res.status}`);
+      // Check if FullCalendar is defined
+      if (typeof FullCalendar !== 'undefined') {
+        addStatus(resourceStatus, '✅ FullCalendar object is available');
+      } else {
+        addStatus(resourceStatus, '❌ FullCalendar object is NOT available', true);
       }
-      
-      let responseText;
-      try {
-        responseText = await res.text();
-        console.log('Response text (first 100 chars):', responseText.substring(0, 100));
-        const data = JSON.parse(responseText);
-        console.log('Parsed JSON successfully');
-        var { events, feeds } = data;
-      } catch (parseError) {
-        console.error('JSON parse error:', parseError);
-        console.error('Response text:', responseText);
-        throw new Error(`JSON parse error: ${parseError.message}`);
-      }
-      
-      loading.style.display = 'none';
-
-      if (typeof FullCalendar === 'undefined') {
-        console.error('FullCalendar is not defined');
-        loading.innerText = 'Error: FullCalendar library not loaded';
-        return;
-      }
-
-      const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-        initialView: 'listWeek',
-        headerToolbar: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'timeGridWeek,listWeek'
-        },
-        events: events,
-        eventDidMount: function (info) {
-          const source = info.event.extendedProps.source;
-          const color = feeds[source]?.color || '#888';
-          info.el.style.backgroundColor = color;
-          info.el.style.borderColor = color;
+    };
+    script.onerror = () => addStatus(resourceStatus, `❌ Failed to load JS: ${jsUrl}`, true);
+    document.head.appendChild(script);
+    
+    // Test events API
+    const eventsUrl = '<%= BASE_PATH %>/events';
+    fetchStatus.textContent = '';
+    addStatus(fetchStatus, `Fetching events from: ${eventsUrl}`);
+    
+    fetch(eventsUrl)
+      .then(response => {
+        if (!response.ok) {
+          addStatus(fetchStatus, `❌ Events API returned status: ${response.status}`, true);
+          return Promise.reject(`HTTP error! status: ${response.status}`);
         }
-      });
-
-      calendar.render();
-
-      // Generate legend and checkboxes
-      const legend = document.getElementById('legend');
-      const ul = document.createElement('ul');
-      ul.style.listStyle = 'none';
-      ul.style.paddingLeft = '0';
-
-      const checkboxes = document.getElementById('checkboxes');
-
-      // Add "Show All" checkbox
-      const allCheckbox = document.createElement('input');
-      allCheckbox.type = 'checkbox';
-      allCheckbox.checked = true;
-      allCheckbox.id = 'toggle-all';
-      allCheckbox.addEventListener('change', function () {
-        const isChecked = this.checked;
-        const checkboxList = document.querySelectorAll('input[id^="toggle-feed-"]');
-        checkboxList.forEach(cb => {
-          cb.checked = isChecked;
-        });
-        updateCalendarEvents();
-      });
-
-      const allLabel = document.createElement('label');
-      allLabel.htmlFor = 'toggle-all';
-      allLabel.innerText = 'Show/Hide All';
-
-      const allDiv = document.createElement('div');
-      allDiv.appendChild(allCheckbox);
-      allDiv.appendChild(allLabel);
-      checkboxes.appendChild(allDiv);
-
-      // Create event sources for each feed
-      const eventSources = {};
-      for (const [id, meta] of Object.entries(feeds)) {
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = true;
-        checkbox.id = `toggle-feed-${id}`;
-        checkbox.addEventListener('change', function () {
-          const allChecked = Array.from(document.querySelectorAll('input[id^="toggle-feed-"]'))
-            .every(cb => cb.checked);
-          allCheckbox.checked = allChecked;
-          updateCalendarEvents();
-        });
-
-        const label = document.createElement('label');
-        label.htmlFor = `toggle-feed-${id}`;
-        label.innerText = meta.name;
-
-        const li = document.createElement('li');
-        li.innerHTML = `<span style="display:inline-block;width:12px;height:12px;background:${meta.color};margin-right:8px;"></span>`;
-        li.appendChild(checkbox);
-        li.appendChild(label);
-        ul.appendChild(li);
-
-        // Create event source for this feed
-        eventSources[id] = events.filter(event => event.source === id);
-      }
-
-      legend.appendChild(ul);
-
-      function updateCalendarEvents() {
-        calendar.removeAllEvents();
         
-        // Add events for checked sources
-        Object.entries(eventSources).forEach(([id, sourceEvents]) => {
-          const checkbox = document.getElementById(`toggle-feed-${id}`);
-          if (checkbox && checkbox.checked) {
-            calendar.addEventSource(sourceEvents);
+        addStatus(fetchStatus, `✅ Events API response received with status: ${response.status}`);
+        return response.text();
+      })
+      .then(text => {
+        addStatus(fetchStatus, `✅ Received ${text.length} bytes of data`);
+        
+        // Show a sample of the response
+        const pre = document.createElement('pre');
+        pre.textContent = text.length > 500 ? text.substring(0, 500) + '...' : text;
+        fetchStatus.appendChild(pre);
+        
+        try {
+          const data = JSON.parse(text);
+          addStatus(fetchStatus, `✅ Successfully parsed JSON data`);
+          
+          if (data.events && Array.isArray(data.events)) {
+            addStatus(fetchStatus, `✅ Found ${data.events.length} events`);
+          } else {
+            addStatus(fetchStatus, `❌ No events array found in response`, true);
+          }
+          
+          // Only initialize calendar if FullCalendar is available
+          if (typeof FullCalendar !== 'undefined' && data.events) {
+            initializeCalendar(data.events, data.feeds);
+          } else {
+            loading.textContent = 'Cannot initialize calendar: FullCalendar not loaded or no events data';
+          }
+        } catch (e) {
+          addStatus(fetchStatus, `❌ Failed to parse JSON: ${e.message}`, true);
+          loading.textContent = 'Failed to load calendar: JSON parse error';
+        }
+      })
+      .catch(error => {
+        addStatus(fetchStatus, `❌ Error fetching events: ${error}`, true);
+        loading.textContent = 'Failed to load calendar: Network error';
+      });
+    
+    function initializeCalendar(events, feeds) {
+      try {
+        addStatus(fetchStatus, '✅ Initializing calendar...');
+        const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+          initialView: 'listWeek',
+          headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'timeGridWeek,listWeek'
+          },
+          events: events,
+          eventDidMount: function (info) {
+            const source = info.event.extendedProps.source;
+            const color = feeds[source]?.color || '#888';
+            info.el.style.backgroundColor = color;
+            info.el.style.borderColor = color;
           }
         });
+        
+        calendar.render();
+        loading.style.display = 'none';
+        addStatus(fetchStatus, '✅ Calendar rendered successfully');
+      } catch (e) {
+        addStatus(fetchStatus, `❌ Error initializing calendar: ${e.message}`, true);
+        loading.textContent = `Failed to initialize calendar: ${e.message}`;
       }
-    } catch (err) {
-      loading.innerText = 'Failed to load calendar data: ' + err.message;
-      console.error('Error loading calendar data:', err);
     }
-  });
   </script>
 </body>
 </html>
