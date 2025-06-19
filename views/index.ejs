@@ -295,22 +295,23 @@
       document.getElementById('toggle-all').checked = allChecked;
       document.getElementById('toggle-all').indeterminate = !allChecked && !noneChecked;
 
-      // Refetch and filter events
-      filterCalendarEvents();
+      // Instead of refetching, just hide/show event elements in the DOM
+      filterCalendarEventsDOM();
     }
 
-    function filterCalendarEvents() {
-      // Remove all events
-      calendar.removeAllEvents();
-      // Add only events from active feeds
-      const filteredEvents = calendar.getEventSources().length > 0 ? [] : calendar.getEvents();
-      // We'll use the original events loaded from the API
-      fetch('<%= BASE_PATH %>/events')
-        .then(response => response.json())
-        .then(data => {
-          const filtered = data.events.filter(ev => activeFeeds[ev.source]);
-          filtered.forEach(ev => calendar.addEvent(ev));
-        });
+    function filterCalendarEventsDOM() {
+      // Only update events currently rendered in the DOM
+      calendar.getEvents().forEach(event => {
+        const source = event.extendedProps.source;
+        const eventEl = event.el;
+        if (eventEl) {
+          if (activeFeeds[source]) {
+            eventEl.style.display = '';
+          } else {
+            eventEl.style.display = 'none';
+          }
+        }
+      });
     }
     
     function refreshCalendar() {
