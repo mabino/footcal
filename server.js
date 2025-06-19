@@ -26,15 +26,14 @@ if (!ICS_URLS.length) {
 // Debug middleware to log all requests
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.originalUrl} (BASE_PATH=${BASE_PATH})`);
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
   next();
 });
 
-// Serve static files from the 'public' directory
-app.use(`${BASE_PATH}/fullcalendar`, express.static(path.join(__dirname, 'node_modules', '@fullcalendar', 'core', 'main')));
+// IMPORTANT: Correctly serve FullCalendar files
+// The path was incorrect in the previous version
+app.use(`${BASE_PATH}/fullcalendar`, express.static(path.join(__dirname, 'node_modules', 'fullcalendar', 'dist')));
 
-// IMPORTANT: Handle both root path and BASE_PATH
-// This is the key change to fix the redirect loop
+// Handle both root path and BASE_PATH
 app.get(['/', BASE_PATH, `${BASE_PATH}/`], (req, res) => {
   console.log(`Rendering index for path: ${req.path}`);
   res.render('index', { 

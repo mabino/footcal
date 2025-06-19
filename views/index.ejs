@@ -20,8 +20,8 @@
     
     <h3>Resource URLs</h3>
     <ul>
-      <li>CSS: <code><%= BASE_PATH %>/fullcalendar/main.min.css</code></li>
-      <li>JS: <code><%= BASE_PATH %>/fullcalendar/main.min.js</code></li>
+      <li>CSS: <code><%= BASE_PATH %>/fullcalendar/main.css</code></li>
+      <li>JS: <code><%= BASE_PATH %>/fullcalendar/main.js</code></li>
       <li>Events: <code><%= BASE_PATH %>/events</code></li>
     </ul>
     
@@ -55,8 +55,8 @@
     // Clear initial message
     resourceStatus.textContent = '';
     
-    // Test CSS loading
-    const cssUrl = '<%= BASE_PATH %>/fullcalendar/main.min.css';
+    // Test CSS loading - UPDATED FILE PATH
+    const cssUrl = '<%= BASE_PATH %>/fullcalendar/main.css';
     const cssLink = document.createElement('link');
     cssLink.rel = 'stylesheet';
     cssLink.href = cssUrl;
@@ -64,8 +64,8 @@
     cssLink.onerror = () => addStatus(resourceStatus, `❌ Failed to load CSS: ${cssUrl}`, true);
     document.head.appendChild(cssLink);
     
-    // Test JS loading
-    const jsUrl = '<%= BASE_PATH %>/fullcalendar/main.min.js';
+    // Test JS loading - UPDATED FILE PATH
+    const jsUrl = '<%= BASE_PATH %>/fullcalendar/main.js';
     const script = document.createElement('script');
     script.src = jsUrl;
     script.onload = () => {
