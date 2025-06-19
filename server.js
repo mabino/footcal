@@ -19,7 +19,10 @@ function generateColor(index, total = 12, lightness = 70, saturation = 70, alpha
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use(express.static(path.join(__dirname, 'public')));
+const BASE_URL = process.env.BASE_URL || '/';
+
+// Serve static files from BASE_URL
+app.use(BASE_URL, express.static(path.join(__dirname, 'public')));
 
 // Global cache
 let cachedEvents = [];
@@ -68,7 +71,8 @@ async function fetchAllEvents() {
   return { events, feedMeta: meta };
 }
 
-app.get('/events', async (_req, res) => {
+// Update /events endpoint to respect BASE_URL
+app.get(BASE_URL + 'events', async (_req, res) => {
   const now = Date.now();
 
   try {
@@ -86,4 +90,4 @@ app.get('/events', async (_req, res) => {
   }
 });
 
-app.listen(8080, () => console.log('Listening on http://0.0.0.0:8080'));
+app.listen(8080, () => console.log(`Listening on http://0.0.0.0:8080${BASE_URL}`));

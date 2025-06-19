@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>Football Calendar</title>
+  <link href="/fullcalendar/main.min.css" rel="stylesheet">
   <script src="/fullcalendar/main.min.js"></script>
   <style>
     body { font-family: sans-serif; padding: 1em; }
@@ -18,10 +19,15 @@
   <div id="loading" style="text-align: center; font-size: 1.2em;">Loading...</div>
 
   <script>
+  // Set BASE_URL from server-side, fallback to '/'
+  window.BASE_URL = window.BASE_URL || '/';
+  </script>
+  <script>
   document.addEventListener('DOMContentLoaded', async function () {
     const loading = document.getElementById('loading');
     try {
-      const res = await fetch('/events');
+      // Use BASE_URL for API endpoint
+      const res = await fetch(window.BASE_URL + 'events');
       const { events, feeds } = await res.json();
       loading.style.display = 'none';
 
