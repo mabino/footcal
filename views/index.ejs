@@ -302,6 +302,17 @@
       // Force a re-render of the current view
       const currentView = calendar.view.type;
       calendar.changeView(currentView, calendar.getDate());
+      // Manually update event visibility for currently rendered events
+      calendar.getEvents().forEach(event => {
+        const source = event.extendedProps.source;
+        if (event.el) {
+          if (activeFeeds[source]) {
+            event.el.style.display = '';
+          } else {
+            event.el.style.display = 'none';
+          }
+        }
+      });
     }
 
     function filterCalendarEventsDOM() {
