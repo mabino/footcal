@@ -126,7 +126,12 @@
     // Immediately log basic information
     console.log('Page loaded');
     console.log('BASE_PATH:', '<%= BASE_PATH %>');
-    document.getElementById('current-url').textContent = window.location.href;
+    
+    // Only set current-url if the element exists (debug section may be commented out)
+    var currentUrlElem = document.getElementById('current-url');
+    if (currentUrlElem) {
+      currentUrlElem.textContent = window.location.href;
+    }
     
     // Check resources
     const resourceStatus = document.getElementById('resource-status');
