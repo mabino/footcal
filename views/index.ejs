@@ -73,21 +73,22 @@
 <body>
   <h1><%= title %></h1>
   
-  <!--
   <button id="debug-toggle" onclick="toggleDebug()">Show Debug Info</button>
+  
   <div id="debug">
     <h2>Debug Information</h2>
     <p>BASE_PATH: <strong><%= BASE_PATH %></strong></p>
     <p>Current URL: <strong id="current-url"></strong></p>
+    
     <h3>Resource URLs</h3>
     <ul>
       <li>JS: <code><%= BASE_PATH %>/fullcalendar/index.global.js</code></li>
       <li>Events: <code><%= BASE_PATH %>/events</code></li>
     </ul>
+    
     <div id="resource-status">Loading resource status...</div>
     <div id="fetch-status">Fetch status will appear here...</div>
   </div>
-  -->
   
   <div id="loading">Loading calendar...</div>
   
@@ -126,12 +127,7 @@
     // Immediately log basic information
     console.log('Page loaded');
     console.log('BASE_PATH:', '<%= BASE_PATH %>');
-    
-    // Only set current-url if the element exists (debug section may be commented out)
-    var currentUrlElem = document.getElementById('current-url');
-    if (currentUrlElem) {
-      currentUrlElem.textContent = window.location.href;
-    }
+    document.getElementById('current-url').textContent = window.location.href;
     
     // Check resources
     const resourceStatus = document.getElementById('resource-status');
