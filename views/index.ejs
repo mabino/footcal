@@ -196,39 +196,51 @@
         });
     }
     
-    function initializeCalendar(events) {
-      try {
-        addStatus(fetchStatus, '✅ Initializing calendar...');
-        calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-          initialView: 'listWeek',
-          headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,listWeek'
-          },
-          events: events,
-          eventDidMount: function (info) {
-            const source = info.event.extendedProps.source;
-            
-            // Set the color
-            const color = allFeeds[source]?.color || '#888';
-            info.el.style.backgroundColor = color;
-            info.el.style.borderColor = color;
-            
-            // Add a data attribute so we can find this element later
-            info.el.setAttribute('data-source', source);
-            
-            console.log('[eventDidMount] Event mounted:', info.event.id, 'source:', source);
-          }
-        });
-        calendar.render();
-        loading.style.display = 'none';
-        addStatus(fetchStatus, '✅ Calendar rendered successfully');
-      } catch (e) {
-        addStatus(fetchStatus, `❌ Error initializing calendar: ${e.message}`, true);
-        loading.textContent = `Failed to initialize calendar: ${e.message}`;
+function initializeCalendar(events) {
+  try {
+    addStatus(fetchStatus, '✅ Initializing calendar...');
+    calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+      initialView: 'listWeek',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,listWeek'
+      },
+      events: events,
+      eventDidMount: function (info) {
+        const source = info.event.extendedProps.source;
+        
+        // Set the color
+        const color = allFeeds[source]?.color || '#888';
+        info.el.style.backgroundColor = color;
+        info.el.style.borderColor = color;
+        
+        // Add a data attribute so we can find this element later
+        info.el.setAttribute('data-source', source);
+        
+        // Apply current visibility state immediately when event is mounted
+        const shouldShow = !!activeFeeds[source];
+        info.el.style.display = shouldShow ? '' : 'none';
+        
+        console.log('[eventDidMount] Event mounted:', info.event.id, 'source:', source, 'visible:', shouldShow);
+      },
+      // Also hook into other rendering events to ensure visibility is maintained
+      eventsSet: function() {
+        // This fires after events are rendered/re-rendered
+        console.log('[eventsSet] Events have been rendered, applying visibility filters');
+        // Use setTimeout to ensure DOM is fully updated
+        setTimeout(updateEventVisibility, 0);
       }
-    }
+    });
+    calendar.render();
+    loading.style.display = 'none';
+    addStatus(fetchStatus, '✅ Calendar rendered successfully');
+  } catch (e) {
+    addStatus(fetchStatus, `❌ Error initializing calendar: ${e.message}`, true);
+    loading.textContent = `Failed to initialize calendar: ${e.message}`;
+  }
+}
+
     
     function createCalendarFilters() {
       const sourcesContainer = document.getElementById('calendar-sources');
